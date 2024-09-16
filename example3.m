@@ -1,6 +1,6 @@
 %Author:    Dimme de Groot
 %Date:      July 2024
-%Descr:     This code illustrates how to use the microphone spotformer object when precomputing the weights.
+%Descr:     This code illustrates how to use the microphone spotformer object using "headless" mode: the weights are computed when requesting the output audio
 
 clear all
 close all
@@ -17,19 +17,19 @@ addpath clenquad/       %Path to Clenshaw-Curtis quadrature by G. von Winckel (s
 
 % (1) First set the microphone, interferer and target locations
 
-% (1a) Microphone (receiver) positions. Here they are placed in a circular array of 10 cm radius. 
+% (1a) Microphone (receiver) positions. Here they are placed in a circular array of 10 cm radius + random offset. 
 Nmic = 8;                               % Number of microphones
 theta = linspace(0, 2*pi, Nmic+1);      %[rad], simulate circular mic array 
 theta = theta(1:Nmic).';                            
 r = 0.1;                                %[m], radius circular array
 loc_mic = [r*cos(theta), r*sin(theta), zeros(Nmic,1)]; 
-loc_mic = loc_mic + [2, 2, 1];          %[m], microphone positions
+loc_mic = loc_mic + [2, 2, 1] + 0.2*randn(size(loc_mic));          %[m], microphone positions
 
 % (1b) Loudspeaker (interferer) position
-loc_loud = [6.010, 2.019, 1.175];       %[m], FL loudspeaker position
-            
+loc_loud = [3, 0.8, 1.01];       
+
 % (1c) Person (target) position
-loc_pers = [6,4, 1.100];        %[m], person position (target)
+loc_pers = [3, 3, 1.100];        %[m], person position (target)
 
 % (1d) Plot the problem setup!
 plotLayout(loc_loud, loc_pers, loc_mic)
@@ -56,7 +56,7 @@ flag_full_axis = false; %[-], True for full frequency axis [-Fs/2, Fs/2). False 
 t_frame = 0.016;        %[s], analysis window length
 t_pad = 0.016;          %[s], padding window length
 
-rebRatio = 0.0;         %Term describing direct to reverberant component (I set this number arbitrarily)
+rebRatio = 0.006;       %Term describing direct to reverberant component (I set this number empirically/arbitrarily. Strictly speaking its frequency dependent)
 numSigma2 = 10^-9;      %Term for dealing with numerical inaccuracies stemming from e.g. numerical integration. Effectively regularises the result by enforcing positive definiteness
 nSigma2 = 0;            %Term which can be set in case of microphone self noise.
 
@@ -67,11 +67,8 @@ synthesis_window = "sqrthann";
 % (4) Create microphone spotformer object
 MicSpot = MicSpotformer(sound_vel, fs,t_frame, t_pad, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window);
 
-% (5) Compute spotformer weights
-MicSpot.fnc_comp_weights(loc_loud, loc_pers, loc_mic)
-
-% (6) Compute output spotformer
-output = MicSpot.comp_output(audioRec);
+% (5) Compute output spotformer
+output = MicSpot.comp_output_headless(audioRec, loc_loud, loc_pers, loc_mic);
 
 %%%%%%%%%%%%%%%%%%%
 % Listen to audio %
@@ -120,19 +117,22 @@ function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceive
     end
 
     %parametrize RIR
-    L = [7 6 3];                %[m], Room dimensions [Lx, Ly, Lz] 
-    beta = 0;                   %[s], reverberation time
-    nRir = 4096;                %[-], Number of samples in RIR
+    L = [7 6 3];                                %[m], Room dimensions [Lx, Ly, Lz] 
+    beta = [-0.7, 0.5, 0.7, -0.5, -0.9, 0.9];   %[s], estimated T60
+    nRir = 2*4096;                              %[-], Number of samples in RIR
 
-    if beta ~= 0
+    %estimate T60
+    if sum(beta ~= 0) ~= 0
         aS_x = L(2)*L(3)*(1-beta(1)^2+1-beta(2)^2);
         aS_y = L(1)*L(3)*(1-beta(3)^2+1-beta(4)^2);
         aS_z = L(1)*L(2)*(1-beta(5)^2+1-beta(6)^2);
         V = L(1)*L(2)*L(3);
-        T60 = 24*log(10)*V/(c*(aS_x+aS_y+aS_z))
+        T60 = 24*log(10)*V/(c*(aS_x+aS_y+aS_z));
     end
+    disp("Estimated T60: " + num2str(T60) + "[s]")
+    
 
-    %Some handy numbers 
+    %Some handy numbers
     N_int = size(locInterferer,1);
     N_tar = size(locTarget, 1); 
     N_rec = size(locReceiver,1);

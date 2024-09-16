@@ -1,6 +1,6 @@
 %Author:    Dimme de Groot
 %Date:      July 2024
-%Descr:     This code illustrates how to use the microphone spotformer object using "headless" mode: the weights are computed when requesting the output audio
+%Descr:     This code illustrates how to use the microphone spotformer object when precomputing the weights.
 
 clear all
 close all
@@ -39,7 +39,7 @@ drawnow()
 noiseStrength = 0.3;    %Increase/decrease to add/remove noise
 sound_vel = 342;        %[m/s], speed of sound
 fs = 16000;             %[Hz], sample frequency
-[audioRec, audioRecTAR, audioRecINT, audioPlayClean, NN] = fnc_computeReceivedAudioAnechoic(loc_loud, loc_mic, loc_pers, noiseStrength, sound_vel, fs);
+[audioRec, audioRecTAR, audioRecINT, audioPlayClean, NN] = fnc_computeReceivedAudio(loc_loud, loc_mic, loc_pers, noiseStrength, sound_vel, fs);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % We are now gonna set the spotformer object, compute the microphone weights and compute the output signal % 
@@ -56,7 +56,7 @@ flag_full_axis = false; %[-], True for full frequency axis [-Fs/2, Fs/2). False 
 t_frame = 0.016;        %[s], analysis window length
 t_pad = 0.016;          %[s], padding window length
 
-rebRatio = 0.006;       %Term describing direct to reverberant component (I set this number arbitrarily)
+rebRatio = 0.006;        %Term describing direct to reverberant component (I set this number arbitrarily; higher T60 is likely higher rebratio. Strictly speaking its frequency dependent)
 numSigma2 = 10^-9;      %Term for dealing with numerical inaccuracies stemming from e.g. numerical integration. Effectively regularises the result by enforcing positive definiteness
 nSigma2 = 0;            %Term which can be set in case of microphone self noise.
 
@@ -67,8 +67,11 @@ synthesis_window = "sqrthann";
 % (4) Create microphone spotformer object
 MicSpot = MicSpotformer(sound_vel, fs,t_frame, t_pad, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window);
 
-% (5) Compute output spotformer
-output = MicSpot.comp_output_headless(audioRec, loc_loud, loc_pers, loc_mic);
+% (5) Compute spotformer weights
+MicSpot.fnc_comp_weights(loc_loud, loc_pers, loc_mic)
+
+% (6) Compute output spotformer
+output = MicSpot.comp_output(audioRec);
 
 %%%%%%%%%%%%%%%%%%%
 % Listen to audio %
@@ -105,7 +108,7 @@ function plotLayout(locInterferer, locTarget, locReceiver)
     legend('Interferer', 'Target', 'Microphones')
 end
 
-function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceivedAudioAnechoic(locInterferer, locReceiver, locTarget, sigma2_noise, c, Fs)
+function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceivedAudio(locInterferer, locReceiver, locTarget, sigma2_noise, c, Fs)
     if nargin == 3
         c = 342;        %[m/s], sound velocity
         Fs = 16000;     %[Hz],  sampling frequency
@@ -118,16 +121,36 @@ function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceive
 
     %parametrize RIR
     L = [7 6 3];                %[m], Room dimensions [Lx, Ly, Lz] 
-    beta = [-0.1, 0.1, -0.1, 0.1, -0.1, 0.1];                 %[-], Reflections Coefficients
+    beta = [-0.1, 0.1, -0.1, 0.1, -0.1, 0.1]; %reflection coefficients
     nRir = 4096;                %[-], Number of samples in RIR
-
+   
+    %estimate T60
+    if sum(beta ~= 0) ~= 0
+        aS_x = L(2)*L(3)*(1-beta(1)^2+1-beta(2)^2);
+        aS_y = L(1)*L(3)*(1-beta(3)^2+1-beta(4)^2);
+        aS_z = L(1)*L(2)*(1-beta(5)^2+1-beta(6)^2);
+        V = L(1)*L(2)*L(3);
+        T60 = 24*log(10)*V/(c*(aS_x+aS_y+aS_z));
+    end
+    disp("Estimated T60: " + num2str(T60) + "[s]")
+    
     %Some handy numbers 
     N_int = size(locInterferer,1);
     N_tar = size(locTarget, 1); 
     N_rec = size(locReceiver,1);
 
-    audioTar = audioread('Excerpt/sample_16kHz.wav');
-    audioTar = [zeros(5*Fs,1); audioTar; zeros(3*Fs,1)];
+    if N_tar == 1
+        audioTar = audioread('Excerpt/sample_16kHz.wav');
+    elseif N_tar == 2
+        audioTar(:,1) = audioread('Excerpt/sample_16kHz.wav');
+        audioTar(:,2) = zeros(size(audioTar(:,1)));
+        train = load('train');
+        audioTarTMP = resample(train.y, Fs, train.Fs);
+        audioTar(1:length(audioTarTMP),2) = audioTarTMP;
+    else
+        disp("Some modifications of fnc_computeReceivedAudio are required for more than two persons :S");
+    end
+    audioTar = [zeros(5*Fs,N_tar); audioTar; zeros(3*Fs,N_tar)];
     audioInt = sigma2_noise*randn(length(audioTar), N_int);
 
     for i=1:N_rec
@@ -151,12 +174,12 @@ function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceive
     audioRec = audioRecINT+audioRecTAR;
 
     %Give estimate SNR
-    [~, NN] = min(vecnorm(locReceiver-locTarget,2,2));
+    [~, NN] = min(vecnorm(locReceiver-locTarget(1,:),2,2));
     S = audioRecTAR(:,NN);
     N = audioRecINT(:,NN);
     INDX = find(abs(S)>0.01*max(abs(S)));
     S = S(INDX);
     N = N(INDX);
     SNR = 20*log10(norm(S)/norm(N));
-    disp("estimated SNR at nearest neighbour (" + num2str(NN) + ") is " + num2str(SNR) + " dB") 
+    disp("estimated SNR at reference microphone (" + num2str(NN) + ") is " + num2str(SNR) + " dB") 
 end

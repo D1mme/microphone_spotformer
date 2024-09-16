@@ -1,6 +1,6 @@
 %Author:    Dimme de Groot
 %Date:      July 2024
-%Descr:     This code illustrates how to use the microphone spotformer object when precomputing the weights.
+%Descr:     This code illustrates how to use the microphone spotformer object using "headless" mode: the weights are computed when requesting the output audio
 
 clear all
 close all
@@ -26,17 +26,21 @@ loc_mic = [r*cos(theta), r*sin(theta), zeros(Nmic,1)];
 loc_mic = loc_mic + [2, 2, 1];          %[m], microphone positions
 
 % (1b) Loudspeaker (interferer) position
-loc_loud = [6.010, 2.019, 1.175];       %[m], FL loudspeaker position
+loc_loud = [6.010, 2.019, 1.175;       
+            3.1, 4, 0.7; 
+            0.4, 0.4, 1.3;
+            2, 3, 2.8];
             
 % (1c) Person (target) position
-loc_pers = [6,4, 1.100];        %[m], person position (target)
+loc_pers = [6,4, 1.100; %[m], person position (target)
+            4, 4, 0.3];       
 
 % (1d) Plot the problem setup!
 plotLayout(loc_loud, loc_pers, loc_mic)
 drawnow()
 
 % (2) Compute the audio received at the microphones 
-noiseStrength = 0.3;    %Increase/decrease to add/remove noise
+noiseStrength = 0.15;    %Increase/decrease to add/remove noise
 sound_vel = 342;        %[m/s], speed of sound
 fs = 16000;             %[Hz], sample frequency
 [audioRec, audioRecTAR, audioRecINT, audioPlayClean, NN] = fnc_computeReceivedAudio(loc_loud, loc_mic, loc_pers, noiseStrength, sound_vel, fs);
@@ -56,7 +60,7 @@ flag_full_axis = false; %[-], True for full frequency axis [-Fs/2, Fs/2). False 
 t_frame = 0.016;        %[s], analysis window length
 t_pad = 0.016;          %[s], padding window length
 
-rebRatio = 0.0;         %Term describing direct to reverberant component (I set this number arbitrarily)
+rebRatio = 0.006;       %Term describing direct to reverberant component (I set this number arbitrarily)
 numSigma2 = 10^-9;      %Term for dealing with numerical inaccuracies stemming from e.g. numerical integration. Effectively regularises the result by enforcing positive definiteness
 nSigma2 = 0;            %Term which can be set in case of microphone self noise.
 
@@ -67,22 +71,19 @@ synthesis_window = "sqrthann";
 % (4) Create microphone spotformer object
 MicSpot = MicSpotformer(sound_vel, fs,t_frame, t_pad, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window);
 
-% (5) Compute spotformer weights
-MicSpot.fnc_comp_weights(loc_loud, loc_pers, loc_mic)
-
-% (6) Compute output spotformer
-output = MicSpot.comp_output(audioRec);
+% (5) Compute output spotformer
+output = MicSpot.comp_output_headless(audioRec, loc_loud, loc_pers, loc_mic);
 
 %%%%%%%%%%%%%%%%%%%
 % Listen to audio %
 %%%%%%%%%%%%%%%%%%%
 if listen_flag == true
     disp('playing audio...')
-    disp('Clean audio at nearest microphone...')
+    disp('Clean audio at reference microphone...')
     soundsc(audioRecTAR(:, NN), fs)
     pause(length(audioRecTAR(:,NN))/fs)
 
-    disp('Noisy mixture at nearest microphone...')
+    disp('Noisy mixture at reference microphone...')
     soundsc(audioRec(:, NN), fs)
     pause(length(audioRecTAR(:,NN))/fs)
 
@@ -121,16 +122,18 @@ function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceive
 
     %parametrize RIR
     L = [7 6 3];                %[m], Room dimensions [Lx, Ly, Lz] 
-    beta = 0;                   %[s], reverberation time
+    beta = [-0.1, 0.1, -0.1, 0.1, -0.1, 0.1];                 %[-], Reflections Coefficients
     nRir = 4096;                %[-], Number of samples in RIR
-
-    if beta ~= 0
+    
+    %estimate T60
+    if sum(beta ~= 0) ~= 0
         aS_x = L(2)*L(3)*(1-beta(1)^2+1-beta(2)^2);
         aS_y = L(1)*L(3)*(1-beta(3)^2+1-beta(4)^2);
         aS_z = L(1)*L(2)*(1-beta(5)^2+1-beta(6)^2);
         V = L(1)*L(2)*L(3);
-        T60 = 24*log(10)*V/(c*(aS_x+aS_y+aS_z))
+        T60 = 24*log(10)*V/(c*(aS_x+aS_y+aS_z));
     end
+    disp("Estimated T60: " + num2str(T60) + " [s]")
 
     %Some handy numbers 
     N_int = size(locInterferer,1);

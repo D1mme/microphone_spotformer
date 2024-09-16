@@ -9,6 +9,7 @@ A few examples are provided.
 - Example 2: A slightly reverberant (T60 $\approx$ 120 ms)  scenario with a single interferer and a single target source. The weights are computed when using the spotformer. 
 - Example 3: A more reverberant scenario (T60 $\approx$ 300 ms) with one interfer and one target source.
 - Example 4: A slightly reverberant scenario (T60 $\approx$ 120 ms) with four interferers and two target sources.
+
 All examples use eight microphones and have white Gaussian noise at the interferers. Note that other types of playback signal and different numbers of microphones also work. 
 
 The covariance matrices are computed through spatial integration. For this, a numerical integration method is needed. I used the [Fast Clenshaw-Curtis quadrature function](https://nl.mathworks.com/matlabcentral/fileexchange/6911-fast-clenshaw-curtis-quadrature) by G. von Winckel, published under a permissive license. Note that this is a different integration method than that used in the original paper ([1]). I did some small experiments (nothinh on wbhich you can draw a definitive conclusion!) and it appeard that the Clenshaw-Curtis quadrature gave more accurate results than the Gauss-Hermite quadrature method used in [1] (though it should be noted that they integrate over a different range). 

@@ -38,7 +38,7 @@ Please cite them if you use this implementation. Citation information:
   doi={10.1109/ICASSP.2015.7178420}}
 ```
 
-We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications". If you use this implementation please consider citing us. 
+We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications". If you use this implementation please consider citing us. Citation information:
 ```
 @INPROCEEDINGS{10889702,
   author={de Groot, D. and Karslioglu, B. and Scharenborg, O. and Martinez, J.},
@@ -48,10 +48,9 @@ We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamfo
   volume={},
   number={},
   pages={1-5},
-  keywords={Loudspeakers;Performance evaluation;Acoustic distortion;Array signal processing;Signal processing algorithms;Acoustics;Robustness;Distortion measurement;Speech processing;Automa>
+  keywords={Loudspeakers;Performance evaluation;Acoustic distortion;Array signal processing;Signal processing algorithms;Acoustics;Robustness;Distortion measurement;Speech processing;Automatic speech recognition;Spotforming;beamforming;speech recognition}
   doi={10.1109/ICASSP49660.2025.10889702}}
 ```
-
 
  
  

@@ -24,5 +24,41 @@ The spotformer implemented in this repository is my interpretation of the follow
 
 [1] J. Martinez, N. Gaubitch and W. B. Kleijn, "A robust region-based near-field beamformer," <em> 2015 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) </em>, South Brisbane, QLD, Australia, 2015, pp. 2494-2498, doi: 10.1109/ICASSP.2015.7178420.
 
+Please cite them if you use this implementation. Citation information:
+```
+@INPROCEEDINGS{7178420,
+  author={Martinez, Jorge and Gaubitch, Nikolay and Kleijn, W. Bastiaan},
+  booktitle={2015 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
+  title={A robust region-based near-field beamformer}, 
+  year={2015},
+  volume={},
+  number={},
+  pages={2494-2498},
+  keywords={Robustness;Microphones;Speech;Reverberation;Arrays;Array signal processing;near-field beamformer;generalized eigenvalue problem;robust beamformer;microphone arrays;reverberation},
+  doi={10.1109/ICASSP.2015.7178420}}
+```
 
+### Citation information
+We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications". If you use this implementation>
+```
+@INPROCEEDINGS{10889702,
+  author={de Groot, D. and Karslioglu, B. and Scharenborg, O. and Martinez, J.},
+  booktitle={ICASSP 2025 - 2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  title={Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications},
+  year={2025},
+  volume={},
+  number={},
+  pages={1-5},
+  keywords={Loudspeakers;Performance evaluation;Acoustic distortion;Array signal processing;Signal processing algorithms;Acoustics;Robustness;Distortion measurement;Speech processing;Automa>
+  doi={10.1109/ICASSP49660.2025.10889702}}
+```
+
+
+ 
+ 
+
+
+
+
+ 
  

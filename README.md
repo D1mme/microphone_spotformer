@@ -19,7 +19,7 @@ The covariance matrices are computed through spatial integration. For this, a nu
 The examples make use of the [room-impulse response generator](https://www.audiolabs-erlangen.de/fau/professor/habets/software/rir-generator) from E. Habets (MIT license). You might need to compile this for your system.
 The sound excerpt is taken from the movie ['Sprite Fight'](https://studio.blender.org/films/sprite-fright/) by Blender Studio (Creative Commons Attribution 1.0 License). 
 
-### Sources
+### Citation information
 The spotformer implemented in this repository is my interpretation of the following paper:
 
 [1] J. Martinez, N. Gaubitch and W. B. Kleijn, "A robust region-based near-field beamformer," <em> 2015 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) </em>, South Brisbane, QLD, Australia, 2015, pp. 2494-2498, doi: 10.1109/ICASSP.2015.7178420.
@@ -38,8 +38,7 @@ Please cite them if you use this implementation. Citation information:
   doi={10.1109/ICASSP.2015.7178420}}
 ```
 
-### Citation information
-We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications". If you use this implementation>
+We used a variant of this implementation in our ICASSP paper "Loudspeaker Beamforming to Enhance Speech Recognition Performance of Voice Driven Applications". If you use this implementation please consider citing us. 
 ```
 @INPROCEEDINGS{10889702,
   author={de Groot, D. and Karslioglu, B. and Scharenborg, O. and Martinez, J.},

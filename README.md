@@ -44,15 +44,9 @@ With:
  - `flag_full_axis`: set to `true` to use the full frequency axis instead of the half frequency axis. I'm not sure if I tested for `true`. 
  - `analysis_window`: window for framing input audio. Only `analysis_window = sqrthann` is possible. 
  - `synthesis_window`: window for synthesising output audio. Only `synthesis_window = sqrthann` is possible.
- - `location_interferer`, `location_target`, `location_microphone`: $N_\text{interferer, target, microphone}\times 3$. Typically, you have more microphones than targets and interferers, i.e. $N_\text{mic}>N_\text{target} + N_\text{interferer}$.  
-
-
-### Computing the microphone weights
-To compute the microphone weights, you can use: ``. Note that the weights are not returned.
-
-
-### Computing the output signal
-To compute the output signal, you use `output = Spotformer.comp_output(received_audio)`. The received audio is the microphone signal as an $\text{lengthAudio}\times N_\text{microphones}$ matrix.
+ - `location_interferer`, `location_target`, `location_microphone`: The locations of the microphones, targets and interferes in meters. Each location is a matrix of size $N_\text{\{interferer, target, microphone\}}\times 3$. Typically, you have more microphones than targets and interferers, i.e. $N_\text{mic}>N_\text{target} + N_\text{interferer}$.
+ - `received_audio`: the received audio is the microphone signal as an $\text{lengthAudio}\times N_\text{microphones}$ matrix.
+ - `output_audio`: this is the output of the spotformer and is a $\text{lengthAudio}\times 1$ vector.
 
 ### Licensing
 The examples make use of the [room-impulse response generator](https://www.audiolabs-erlangen.de/fau/professor/habets/software/rir-generator) from E. Habets (MIT license). You might need to compile this for your system.

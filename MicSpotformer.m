@@ -393,7 +393,7 @@ classdef MicSpotformer < handle
                     audioOut(l*obj.N_hop+1:l*obj.N_hop+obj.N_t,:) = audioOut(l*obj.N_hop+1:l*obj.N_hop+obj.N_t,:) + outputFrame;
                 catch ME    
                     if strncmp("Index", ME.message, 5)
-                        disp("Crashed at frame " + num2str(l) + " v.d. approx " + num2str(floor(size(audioMixture,1)/obj.N_hop - 1)))
+                        disp("Finished at frame " + num2str(l) + " v.d. approx " + num2str(floor(size(audioMixture,1)/obj.N_hop - 1)))
                         stop_flag = 1;
                     else    
                         rethrow(ME)

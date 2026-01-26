@@ -38,8 +38,10 @@ With:
 
 ### Computing the microphone weights
 To compute the microphone weights, you can use: `Spotformer.fnc_comp_weights(location_interferer, location_target, location_microphone)`. Note that the weights are not returned.
-Each location is an $N\times3$ array, where $N$ is the number of interfers, targets, or microphones. Typically, you have more microphones than targets and interferers, i.e. $N_\text{mic}>N_{target} + N_\text{interferer}$.  
+Each location is an $N\times3$ array, where $N$ is the number of interfers, targets, or microphones. Typically, you have more microphones than targets and interferers, i.e. $N_\text{mic}>N_\text{target} + N_\text{interferer}$.  
 
+### Computing the output signal
+To compute the output signal, you use `output = Spotformer.comp_output(received_audio)`. The received audio is the microphone signal as an $\text{length\_audio}\times N_\text{microphones}$ matrix.
 
 ### Licensing
 The examples make use of the [room-impulse response generator](https://www.audiolabs-erlangen.de/fau/professor/habets/software/rir-generator) from E. Habets (MIT license). You might need to compile this for your system.

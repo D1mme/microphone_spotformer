@@ -18,8 +18,10 @@ The covariance matrices are computed through spatial integration. For this, a nu
 The code was tested on Ubuntu, MATLAB R2024a.
 
 ## How to use
-Initialising the spotformer:
-`obj = MicSpotformer(c, fs, window_length, pad_length, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window)`
+
+### Initialising the spotformer:
+Use: `Spotformer = MicSpotformer(c, fs, window_length, pad_length, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window)`
+
 With:
  - `c`: the speed of sound. Usually `c=343` meters/second.
  - `fs`: the sampling rate. For speech, often `fs=16000` samples/second (or Hz).
@@ -34,6 +36,9 @@ With:
  - `analysis_window`: window for framing input audio. Only `analysis_window = sqrthann` is possible. 
  - `synthesis_window`: window for synthesising output audio. Only `synthesis_window = sqrthann` is possible.
 
+### Computing the microphone weights
+To compute the microphone weights, you can use: `Spotformer.fnc_comp_weights(location_interferer, location_target, location_microphone)`. Note that the weights are not returned.
+Each location is an $N\times3$ array, where $N$ is the number of interfers, targets, or microphones. Typically, you have more microphones than targets and interferers, i.e. $N_\text{mic}>N_{target} + N_\text{interferer}$.  
 
 
 ### Licensing

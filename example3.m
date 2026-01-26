@@ -16,19 +16,13 @@ addpath clenquad/       %Path to Clenshaw-Curtis quadrature by G. von Winckel (s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % (1) First set the microphone, interferer and target locations
+%   (1a) Microphone (receiver) positions. Here they are placed in a circular array of 10 cm radius + random offset. 
+loc_mic = get_location_microphones(8, 0.1, [2,2,1]); 
 
-% (1a) Microphone (receiver) positions. Here they are placed in a circular array of 10 cm radius + random offset. 
-Nmic = 8;                               % Number of microphones
-theta = linspace(0, 2*pi, Nmic+1);      %[rad], simulate circular mic array 
-theta = theta(1:Nmic).';                            
-r = 0.1;                                %[m], radius circular array
-loc_mic = [r*cos(theta), r*sin(theta), zeros(Nmic,1)]; 
-loc_mic = loc_mic + [2, 2, 1] + 0.2*randn(size(loc_mic));          %[m], microphone positions
-
-% (1b) Loudspeaker (interferer) position
+%   (1b) Loudspeaker (interferer) position
 loc_loud = [3, 0.8, 1.01];       
 
-% (1c) Person (target) position
+%   (1c) Person (target) position
 loc_pers = [3, 3, 1.100];        %[m], person position (target)
 
 % (1d) Plot the problem setup!
@@ -104,6 +98,18 @@ function plotLayout(locInterferer, locTarget, locReceiver)
     grid on
     legend('Interferer', 'Target', 'Microphones')
 end
+
+
+function loc_mic = get_location_microphones(Nmic, r, offset)
+    %Nmic:      Number of microphones
+    %r:         radius circular microphone array [in meter]
+    %offset:    location center microphone array om room [3x1; in meters].
+    theta = linspace(0, 2*pi, Nmic+1);      %[rad], simulate circular mic array 
+    theta = theta(1:Nmic).';                            
+    loc_mic = [r*cos(theta), r*sin(theta), zeros(Nmic,1)]; 
+    loc_mic = loc_mic + offset;          %[m], microphone positions
+end
+
 
 function [audioRec, audioRecTAR, audioRecINT, audioTar, NN] = fnc_computeReceivedAudio(locInterferer, locReceiver, locTarget, sigma2_noise, c, Fs)
     if nargin == 3

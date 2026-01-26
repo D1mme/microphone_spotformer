@@ -14,6 +14,7 @@ All examples use eight microphones and have white Gaussian noise at the interfer
 
 The covariance matrices are computed through spatial integration. For this, a numerical integration method is needed. I used the [Fast Clenshaw-Curtis quadrature function](https://nl.mathworks.com/matlabcentral/fileexchange/6911-fast-clenshaw-curtis-quadrature) by G. von Winckel, published under a permissive license. Note that this is a different integration method than that used in the original paper ([1]). I did some small experiments (nothing on which you can draw a definitive conclusion!) and it appeared that the Clenshaw-Curtis quadrature gave more accurate results than the Gauss-Hermite quadrature method used in [1] (though it should be noted that they integrate over a different range). It is also worth investigating the accuracy at higher frequencies, since these methods do not deal very well with oscillatory integrals. 
 
+The code was tested on Ubuntu, MATLAB R2024a.
 
 ### Licensing
 The examples make use of the [room-impulse response generator](https://www.audiolabs-erlangen.de/fau/professor/habets/software/rir-generator) from E. Habets (MIT license). You might need to compile this for your system.

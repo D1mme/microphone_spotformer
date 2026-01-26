@@ -1,5 +1,6 @@
 %Author:    Dimme de Groot
 %Date:      Sept. 2024
+%Updated:   Jan. 2026
 %Descr:     This object implements the microphone spotformer
 %
 %Methods:   
@@ -63,6 +64,68 @@ classdef MicSpotformer < handle
 
         weights_mic         %[-], the weights of the microphone spotformer
     end
+
+    methods (Static)
+        function D=distcalc(X1,X2)
+            %Descr: D = distcalc(X1, X2) computes the distances between X1 and X2 for each item in the list
+            %       X1 is an M1 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)
+            %       X2 is an M2 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)                                                                 " 
+            %       D is an M1 x M2 matrix with the distances between the locations in X1 and X2. The i'th row of the j'th columnt corresponds to L2-norm( {X1}_i - {X2}_j ) 
+            M1 = size(X1,1);
+            M2 = size(X2,1);
+            D = zeros(M1,M2);
+            for i=1:M1
+                D(i,:) = vecnorm(X1(i,:) - X2,2,2);
+            end
+        end
+
+        function out = fnc_green_wavefunction(x_s, x_r, k)    
+            %Descr: This function evaluates the greens function solution to the (acoustic) wave equation in the frequency domain.
+            %           g(x_s, x_r, k) = exp(-1j * k * norm(x_s-x_r)) / (4*pi*norm(x_s-x_r)), with k = f/c the wavenumber, f the frequency in hertz, c the wave velocity
+            %       Inputs: 
+            %           x_s a 3x1 real vector giving the source location
+            %           x_r a 3xN real vector giving the receiver location
+            %           k   a real scalar giving the wavenumber
+            %       Outputs:
+            %           out a 1 x N complex vector. The i'th element contains the greens function evaluated for the i'th coordiante of x_r (i.e. x_r(:,i));
+            %           
+            %       Note: the greens function for the wave equation (actually: helmholtz equation) is symmetric in the coordinate argument. 
+            %             I.e.  g(x_s, x_r, k) = g(x_r, x_s, k)
+
+            dist = vecnorm(x_s-x_r);
+            out = 1./(4*pi*dist).*exp(-1j*k*dist);
+        end
+
+        function [weight_list, coor_list] = weightlist(w_x, coor_x, w_y, coor_y, w_z, coor_z)
+            % Function to gert all coordinates and the corresponding weights needed for the numerical integration     
+            %   Inputs:     - w_{x,y,z}:    weightvectors of length N_{x,y,z}. Orientation does not matter
+            %               - coor_{x,y,z}: the corresponding coordinates of length  N_{x,y,z}. Orientation does not matter
+            %   Outputs:    - weight_list:  a list of weights of size [1, N_x*N_y*N_z]
+            %               - coor_list:    coor_list is a list of coordinates of size [3, N_x*N_y*N_z]
+            % Note: a numerically more robust implementation would probably first do the inner sum, than weigh it with the weights of the middle sum, etc.
+            %       our implementation instead pulls the weights together at once.
+
+            %Define lengths and placeholds
+            Nx = length(w_x);
+            Ny = length(w_y);
+            Nz = length(w_z);
+            coor_list = zeros(3,Nx*Ny*Nz);
+            weight_list = zeros(1,Nx*Ny*Nz);
+            
+            %Loop through coordinates
+            count = 1;
+            for i=1:Nx
+                for j=1:Ny
+                    for k=1:Nz
+                        coor_list(:,count) = [coor_x(i); coor_y(j); coor_z(k)];
+                        weight_list(1,count) = w_x(i)*w_y(j)*w_z(k);
+                        count = count+1;
+                    end
+                end
+            end
+        end
+    end
+
 
     methods
         function obj = MicSpotformer(c, fs, window_length, pad_length, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window)
@@ -158,7 +221,9 @@ classdef MicSpotformer < handle
             N = size(x,1);          %number of positions considered
             
             R_iso = zeros(N, N, length(obj.k_ax));
-            dist = distcalc(x,x);   %norm(x1-x2), norm(x1-x2), etc.
+
+        
+            dist = MicSpotformer.distcalc(x, x);   %norm(x1-x2), norm(x1-x2), etc.
         
             for i = 1:length(obj.k_ax)
                 R_iso(:,:,i) = sinc(obj.k_ax(i)*dist);
@@ -166,81 +231,10 @@ classdef MicSpotformer < handle
             obj.Riso = R_iso;
         end
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % These are methods relating to the spatial integration %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        function D=distcalc(X1,X2)
-            %Descr: D = distcalc(X1, X2) computes the distances between X1 and X2 for each item in the list
-            %       X1 is an M1 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)
-            %       X2 is an M2 x dim "                                                                   " 
-            %       D is an M1 x M2 matrix with the distances between the locations in X1 and X2. The i'th row of the j'th columnt corresponds to L2-norm( {X1}_i - {X2}_j ) 
-            M1 = size(X1,1);
-            M2 = size(X2,1);
-            D = zeros(M1,M2);
-            for i=1:M1
-                D(i,:) = vecnorm(X1(i,:) - X2,2,2);
-            end
-        end
-
-        function out = fnc_green_wavefunction(x_s, x_r, k)    
-            %Descr: This function evaluates the greens function solution to the (acoustic) wave equation in the frequency domain.
-            %           g(x_s, x_r, k) = exp(-1j * k * norm(x_s-x_r)) / (4*pi*norm(x_s-x_r)), with k = f/c the wavenumber, f the frequency in hertz, c the wave velocity
-            %       Inputs: 
-            %           x_s a 3x1 real vector giving the source location
-            %           x_r a 3xN real vector giving the receiver location
-            %           k   a real scalar giving the wavenumber
-            %       Outputs:
-            %           out a 1 x N complex vector. The i'th element contains the greens function evaluated for the i'th coordiante of x_r (i.e. x_r(:,i));
-            %           
-            %       Note: the greens function for the wave equation (actually: helmholtz equation) is symmetric in the coordinate argument. 
-            %             I.e.  g(x_s, x_r, k) = g(x_r, x_s, k)
-
-            dist = vecnorm(x_s-x_r);
-            out = 1./(4*pi*dist).*exp(-1j*k*dist);
-        end
-
-        function out = fnc_integrand_Gaussian(x_s1, x_s2, x_r, k, mu_r, sigma_x, sigma_y, sigma_z, flag_spatial_weight)
-            %Descr: This function is used for computing the spatial covariance matrices. 
-            %           out = fnc_integrand_Gaussian(x_s1, x_s2, x_r, k, mu_r, sigma_x, sigma_y, sigma_z, flag_spatial_weight)
-            %       If flag_spatial_weight==false     
-            %           out = 1/(sqrt{(2*pi)^3}*sigma_x*sigma_y*sigma_z) * g(x_s1, x_r, k)*conj(g(x_s2, x_r, k))
-            %       If flag_spatial_weight==true, a Gaussian is added:
-            %           out = 1/(sqrt{(2*pi)^3}*sigma_x*sigma_y*sigma_z) * g(x_s1, x_r, k)*conj(g(x_s2, x_r, k))*exp(-0.5 {[(x_r(1)-mu(1))/sigma_x]^2+[(x_r(2)-mu(2))/sigma_y]^2+[(x_r(3)-mu(3))/sigma_z]^2})
-            %
-            %       Here, g is the greens function solution to the wave equation
-            %                      
-            %           Inputs: 
-            %               - x_s1, x_s2 the source locations. 3x1 real vectors
-            %               - x_r the receiver location. (integration variable) 3xN real vector --> the output is computed for each N
-            %               - mu_r the mean of the Guassian. 3x1 real vector
-            %               - sigma_x, sigma_y, sigma_z the standard deviations. Real scalar
-            %               - k the wave number. Real scalar
-            %               - flag_spatial_weight selects if the Gaussian weighting should be added.
-            %           Output:
-            %               - Out: 1xN complex vector. Each element out(1,i) is the result evaluated for receiver location x_r(:,i);
-
-            %The inner term of the integrand
-            out = fnc_green_wavefunction(x_s1, x_r, k).*conj(fnc_green_wavefunction(x_s2, x_r, k));
-            
-            %Normalisation term of (Gaussian) weighting
-            normConst = sqrt((2*pi)^3)*sigma_x*sigma_y*sigma_z;
-            
-            %Gaussian (spatial) weighting
-            %Note: if a Gauss-hermite quadrature is used, this is not needed (it is implicit in the weights). For Clenshaw-Curtis it is not included in the weights.  
-            if flag_spatial_weight     
-                diff = x_r - mu_r;
-                out = out.*exp(-0.5*( (diff(1,:)/sigma_x).^2 + (diff(2,:)/sigma_y).^2  + (diff(3,:)/sigma_z).^2 ));
-            end
-        
-            %Output should be normalised by normalisation term
-            out = out/normConst;
-        end
-
         function R_region = fnc_comp_Rregion(obj, x, x_bar, sigma2)
             %Descr:     Computes the covariance matrices over the regions. (Excluding the isotropic and numerical covariance matrices)     
             %
-            %Inputs:    - N:        [1 x 1] or [3 x 1] or [1 x 3] the number of points per dimension in the numerical integration. Can easily be changed to make number of points dimension depedent
+            %Inputs:    - N:        [1 x 1] or [3 x 1] or [1 x 3] the number of points per dimension in the numerical integration. Can easily be changed to make number of points dimension dependent
             %           - k_ax:     [Nk x 1], the frequency axis in radians per second 
             %           - x:        [Nr x 3], the locations for which the correlations are computed. 
             %           - x_bar:    [1 x 3],  the mean location around which we integrate (i.e. the integration variable, but we set the variable part in this function)
@@ -271,7 +265,7 @@ classdef MicSpotformer < handle
             [x_quad, w_x] = clenquad(Nx, -3*sigma_x+x_bar(1), 3*sigma_x+x_bar(1));
             [y_quad, w_y] = clenquad(Ny, -3*sigma_y+x_bar(2), 3*sigma_y+x_bar(2)); 
             [z_quad, w_z] = clenquad(Nz, -3*sigma_z+x_bar(3), 3*sigma_z+x_bar(3));
-            [weight_list, coor_list] = weightlist(w_x, x_quad, w_y, y_quad, w_z, z_quad);
+            [weight_list, coor_list] = MicSpotformer.weightlist(w_x, x_quad, w_y, y_quad, w_z, z_quad);
         
             % Lots of for loops! x-y-z dimension + frequency bins 
             % Note: R(i,j,k) = conj(R(j,i,k)): this allows for speed up!
@@ -281,37 +275,8 @@ classdef MicSpotformer < handle
                     for k=1:Nk
                         kk = obj.k_ax(k);  %Get frequency in rad/s        
         
-                        out = fnc_integrand_Gaussian(x(i,:)', x(j,:)', coor_list, kk, x_bar', sigma_x, sigma_y, sigma_z, true);
+                        out = obj.fnc_integrand_Gaussian(x(i,:)', x(j,:)', coor_list, kk, x_bar', sigma_x, sigma_y, sigma_z, true);
                         R_region(i,j,k) = sum(weight_list.*out);   
-                    end
-                end
-            end
-        end
-
-        function [weight_list, coor_list] = weightlist(w_x, coor_x, w_y, coor_y, w_z, coor_z)
-            % Function to gert all coordinates and the corresponding weights needed for the numerical integration     
-            %   Inputs:     - w_{x,y,z}:    weightvectors of length N_{x,y,z}. Orientation does not matter
-            %               - coor_{x,y,z}: the corresponding coordinates of length  N_{x,y,z}. Orientation does not matter
-            %   Outputs:    - weight_list:  a list of weights of size [1, N_x*N_y*N_z]
-            %               - coor_list:    coor_list is a list of coordinates of size [3, N_x*N_y*N_z]
-            % Note: a numerically more robust implementation would probably first do the inner sum, than weigh it with the weights of the middle sum, etc.
-            %       our implementation instead pulls the weights together at once.
-
-            %Define lengths and placeholds
-            Nx = length(w_x);
-            Ny = length(w_y);
-            Nz = length(w_z);
-            coor_list = zeros(3,Nx*Ny*Nz);
-            weight_list = zeros(1,Nx*Ny*Nz);
-            
-            %Loop through coordinates
-            count = 1;
-            for i=1:Nx
-                for j=1:Ny
-                    for k=1:Nz
-                        coor_list(:,count) = [coor_x(i); coor_y(j); coor_z(k)];
-                        weight_list(1,count) = w_x(i)*w_y(j)*w_z(k);
-                        count = count+1;
                     end
                 end
             end
@@ -349,6 +314,44 @@ classdef MicSpotformer < handle
                 R_L_TAR = R_L_TAR+R_h;                      % We sum the contribution of each region to get the total region
             end 
             obj.R_Tar = R_L_TAR;
+        end
+
+
+        function out = fnc_integrand_Gaussian(obj, x_s1, x_s2, x_r, k, mu_r, sigma_x, sigma_y, sigma_z, flag_spatial_weight)
+            %Descr: This function is used for computing the spatial covariance matrices. 
+            %           out = fnc_integrand_Gaussian(x_s1, x_s2, x_r, k, mu_r, sigma_x, sigma_y, sigma_z, flag_spatial_weight)
+            %       If flag_spatial_weight==false     
+            %           out = 1/(sqrt{(2*pi)^3}*sigma_x*sigma_y*sigma_z) * g(x_s1, x_r, k)*conj(g(x_s2, x_r, k))
+            %       If flag_spatial_weight==true, a Gaussian is added:
+            %           out = 1/(sqrt{(2*pi)^3}*sigma_x*sigma_y*sigma_z) * g(x_s1, x_r, k)*conj(g(x_s2, x_r, k))*exp(-0.5 {[(x_r(1)-mu(1))/sigma_x]^2+[(x_r(2)-mu(2))/sigma_y]^2+[(x_r(3)-mu(3))/sigma_z]^2})
+            %
+            %       Here, g is the greens function solution to the wave equation
+            %                      
+            %           Inputs: 
+            %               - x_s1, x_s2 the source locations. 3x1 real vectors
+            %               - x_r the receiver location. (integration variable) 3xN real vector --> the output is computed for each N
+            %               - mu_r the mean of the Guassian. 3x1 real vector
+            %               - sigma_x, sigma_y, sigma_z the standard deviations. Real scalar
+            %               - k the wave number. Real scalar
+            %               - flag_spatial_weight selects if the Gaussian weighting should be added.
+            %           Output:
+            %               - Out: 1xN complex vector. Each element out(1,i) is the result evaluated for receiver location x_r(:,i);
+
+            %The inner term of the integrand
+            out = obj.fnc_green_wavefunction(x_s1, x_r, k).*conj(obj.fnc_green_wavefunction(x_s2, x_r, k));
+            
+            %Normalisation term of (Gaussian) weighting
+            normConst = sqrt((2*pi)^3)*sigma_x*sigma_y*sigma_z;
+            
+            %Gaussian (spatial) weighting
+            %Note: if a Gauss-hermite quadrature is used, this is not needed (it is implicit in the weights). For Clenshaw-Curtis it is not included in the weights.  
+            if flag_spatial_weight     
+                diff = x_r - mu_r;
+                out = out.*exp(-0.5*( (diff(1,:)/sigma_x).^2 + (diff(2,:)/sigma_y).^2  + (diff(3,:)/sigma_z).^2 ));
+            end
+        
+            %Output should be normalised by normalisation term
+            out = out/normConst;
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

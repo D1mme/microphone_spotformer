@@ -65,67 +65,6 @@ classdef MicSpotformer < handle
         weights_mic         %[-], the weights of the microphone spotformer
     end
 
-    methods (Static)
-        function D=distcalc(X1,X2)
-            %Descr: D = distcalc(X1, X2) computes the distances between X1 and X2 for each item in the list
-            %       X1 is an M1 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)
-            %       X2 is an M2 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)                                                                 " 
-            %       D is an M1 x M2 matrix with the distances between the locations in X1 and X2. The i'th row of the j'th columnt corresponds to L2-norm( {X1}_i - {X2}_j ) 
-            M1 = size(X1,1);
-            M2 = size(X2,1);
-            D = zeros(M1,M2);
-            for i=1:M1
-                D(i,:) = vecnorm(X1(i,:) - X2,2,2);
-            end
-        end
-
-        function out = fnc_green_wavefunction(x_s, x_r, k)    
-            %Descr: This function evaluates the greens function solution to the (acoustic) wave equation in the frequency domain.
-            %           g(x_s, x_r, k) = exp(-1j * k * norm(x_s-x_r)) / (4*pi*norm(x_s-x_r)), with k = f/c the wavenumber, f the frequency in hertz, c the wave velocity
-            %       Inputs: 
-            %           x_s a 3x1 real vector giving the source location
-            %           x_r a 3xN real vector giving the receiver location
-            %           k   a real scalar giving the wavenumber
-            %       Outputs:
-            %           out a 1 x N complex vector. The i'th element contains the greens function evaluated for the i'th coordiante of x_r (i.e. x_r(:,i));
-            %           
-            %       Note: the greens function for the wave equation (actually: helmholtz equation) is symmetric in the coordinate argument. 
-            %             I.e.  g(x_s, x_r, k) = g(x_r, x_s, k)
-
-            dist = vecnorm(x_s-x_r);
-            out = 1./(4*pi*dist).*exp(-1j*k*dist);
-        end
-
-        function [weight_list, coor_list] = weightlist(w_x, coor_x, w_y, coor_y, w_z, coor_z)
-            % Function to gert all coordinates and the corresponding weights needed for the numerical integration     
-            %   Inputs:     - w_{x,y,z}:    weightvectors of length N_{x,y,z}. Orientation does not matter
-            %               - coor_{x,y,z}: the corresponding coordinates of length  N_{x,y,z}. Orientation does not matter
-            %   Outputs:    - weight_list:  a list of weights of size [1, N_x*N_y*N_z]
-            %               - coor_list:    coor_list is a list of coordinates of size [3, N_x*N_y*N_z]
-            % Note: a numerically more robust implementation would probably first do the inner sum, than weigh it with the weights of the middle sum, etc.
-            %       our implementation instead pulls the weights together at once.
-
-            %Define lengths and placeholds
-            Nx = length(w_x);
-            Ny = length(w_y);
-            Nz = length(w_z);
-            coor_list = zeros(3,Nx*Ny*Nz);
-            weight_list = zeros(1,Nx*Ny*Nz);
-            
-            %Loop through coordinates
-            count = 1;
-            for i=1:Nx
-                for j=1:Ny
-                    for k=1:Nz
-                        coor_list(:,count) = [coor_x(i); coor_y(j); coor_z(k)];
-                        weight_list(1,count) = w_x(i)*w_y(j)*w_z(k);
-                        count = count+1;
-                    end
-                end
-            end
-        end
-    end
-
 
     methods
         function obj = MicSpotformer(c, fs, window_length, pad_length, N_int, IntWinRad, TarWinRad, nSigma2, numSigma2, rebRatio, flag_full_axis, analysis_window, synthesis_window)
@@ -189,7 +128,6 @@ classdef MicSpotformer < handle
         end
 
         %Some methods used internally
-
         function window = methodSqrthann(obj)
             % This function computes thes sqaure root hanning window
             % See, i.e., Smith, J.O. Spectral Audio Signal Processing, http://ccrma.stanford.edu/~jos/sasp/, online book, 2011 edition.
@@ -223,7 +161,7 @@ classdef MicSpotformer < handle
             R_iso = zeros(N, N, length(obj.k_ax));
 
         
-            dist = MicSpotformer.distcalc(x, x);   %norm(x1-x2), norm(x1-x2), etc.
+            dist = obj.distcalc(x, x);   %norm(x1-x2), norm(x1-x2), etc.
         
             for i = 1:length(obj.k_ax)
                 R_iso(:,:,i) = sinc(obj.k_ax(i)*dist);
@@ -265,7 +203,7 @@ classdef MicSpotformer < handle
             [x_quad, w_x] = clenquad(Nx, -3*sigma_x+x_bar(1), 3*sigma_x+x_bar(1));
             [y_quad, w_y] = clenquad(Ny, -3*sigma_y+x_bar(2), 3*sigma_y+x_bar(2)); 
             [z_quad, w_z] = clenquad(Nz, -3*sigma_z+x_bar(3), 3*sigma_z+x_bar(3));
-            [weight_list, coor_list] = MicSpotformer.weightlist(w_x, x_quad, w_y, y_quad, w_z, z_quad);
+            [weight_list, coor_list] = obj.weightlist(w_x, x_quad, w_y, y_quad, w_z, z_quad);
         
             % Lots of for loops! x-y-z dimension + frequency bins 
             % Note: R(i,j,k) = conj(R(j,i,k)): this allows for speed up!
@@ -315,7 +253,6 @@ classdef MicSpotformer < handle
             end 
             obj.R_Tar = R_L_TAR;
         end
-
 
         function out = fnc_integrand_Gaussian(obj, x_s1, x_s2, x_r, k, mu_r, sigma_x, sigma_y, sigma_z, flag_spatial_weight)
             %Descr: This function is used for computing the spatial covariance matrices. 
@@ -482,6 +419,67 @@ classdef MicSpotformer < handle
             end
             obj.fnc_comp_weights(interferer_location, target_location, receiver_location, nyquist_flag)
             audioOut = obj.comp_output(audioMixture);
+        end
+    end
+
+    methods (Static)
+        function D=distcalc(X1,X2)
+            %Descr: D = distcalc(X1, X2) computes the distances between X1 and X2 for each item in the list
+            %       X1 is an M1 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)
+            %       X2 is an M2 x dim matrix with entries (x,y,z) or similar (dim=3 for {x,y,z}, dim=2 for {x,y}, etc.)                                                                 " 
+            %       D is an M1 x M2 matrix with the distances between the locations in X1 and X2. The i'th row of the j'th columnt corresponds to L2-norm( {X1}_i - {X2}_j ) 
+            M1 = size(X1,1);
+            M2 = size(X2,1);
+            D = zeros(M1,M2);
+            for i=1:M1
+                D(i,:) = vecnorm(X1(i,:) - X2,2,2);
+            end
+        end
+
+        function out = fnc_green_wavefunction(x_s, x_r, k)    
+            %Descr: This function evaluates the greens function solution to the (acoustic) wave equation in the frequency domain.
+            %           g(x_s, x_r, k) = exp(-1j * k * norm(x_s-x_r)) / (4*pi*norm(x_s-x_r)), with k = f/c the wavenumber, f the frequency in hertz, c the wave velocity
+            %       Inputs: 
+            %           x_s a 3x1 real vector giving the source location
+            %           x_r a 3xN real vector giving the receiver location
+            %           k   a real scalar giving the wavenumber
+            %       Outputs:
+            %           out a 1 x N complex vector. The i'th element contains the greens function evaluated for the i'th coordiante of x_r (i.e. x_r(:,i));
+            %           
+            %       Note: the greens function for the wave equation (actually: helmholtz equation) is symmetric in the coordinate argument. 
+            %             I.e.  g(x_s, x_r, k) = g(x_r, x_s, k)
+
+            dist = vecnorm(x_s-x_r);
+            out = 1./(4*pi*dist).*exp(-1j*k*dist);
+        end
+
+        function [weight_list, coor_list] = weightlist(w_x, coor_x, w_y, coor_y, w_z, coor_z)
+            % Function to gert all coordinates and the corresponding weights needed for the numerical integration     
+            %   Inputs:     - w_{x,y,z}:    weightvectors of length N_{x,y,z}. Orientation does not matter
+            %               - coor_{x,y,z}: the corresponding coordinates of length  N_{x,y,z}. Orientation does not matter
+            %   Outputs:    - weight_list:  a list of weights of size [1, N_x*N_y*N_z]
+            %               - coor_list:    coor_list is a list of coordinates of size [3, N_x*N_y*N_z]
+            % Note: a numerically more robust implementation would probably first do the inner sum, than weigh it with the weights of the middle sum, etc.
+            %       our implementation instead pulls the weights together at once.
+
+            %Define lengths and placeholds
+            Nx = length(w_x);
+            Ny = length(w_y);
+            Nz = length(w_z);
+            coor_list = zeros(3,Nx*Ny*Nz);
+            weight_list = zeros(1,Nx*Ny*Nz);
+            
+            %Loop through coordinates
+            count = 1;
+            for i=1:Nx
+                for j=1:Ny
+                    for k=1:Nz
+                        coor_list(:,count) = [coor_x(i); coor_y(j); coor_z(k)];
+                        weight_list(1,count) = w_x(i)*w_y(j)*w_z(k);
+                        count = count+1;
+                    end
+                end
+            end
         end
     end
 end

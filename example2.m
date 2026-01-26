@@ -68,6 +68,7 @@ MicSpot.fnc_comp_weights(loc_loud, loc_pers, loc_mic)
 % (6) Compute output spotformer
 output = MicSpot.comp_output(audioRec);
 
+
 %%%%%%%%%%%%%%%%%%%
 % Listen to audio %
 %%%%%%%%%%%%%%%%%%%

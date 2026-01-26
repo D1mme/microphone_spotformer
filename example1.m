@@ -14,7 +14,6 @@ addpath clenquad/       %Path to Clenshaw-Curtis quadrature by G. von Winckel (s
 % Compute the received audio (audioRec). This is the mixture of the target audio (audioRecTAR) and the interfering (audioRecINT) audio.  %
 % AudioPlayClean is the input signal. NN is the microphone nearest to the user                                                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % (1) First set the microphone, interferer and target locations
 %   (1a) Microphone (receiver) positions. Here there are 8 mics placed in a circular array of 10 cm radius at location [x,y,z]=[2,2,1] m. 
 loc_mic = get_location_microphones(8, 0.1, [2,2,1]); 
@@ -25,7 +24,7 @@ loc_loud = [6.010, 2.019, 1.175];
 %   (1c) Person (target) position
 loc_pers = [6,4, 1.100];  
 
-% (1d) Plot the problem setup!
+%   (1d) Plot the problem setup!
 plotLayout(loc_loud, loc_pers, loc_mic)
 drawnow()
 
@@ -35,10 +34,10 @@ sound_vel = 342;        %[m/s], speed of sound
 fs = 16000;             %[Hz], sample frequency
 [audioRec, audioRecTAR, audioRecINT, audioPlayClean, NN] = fnc_computeReceivedAudio(loc_loud, loc_mic, loc_pers, noiseStrength, sound_vel, fs);
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % We are now gonna set the spotformer object, compute the microphone weights and compute the output signal % 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % (1) Inputs related to integration
 N_int = 10;             %[-], number of integration points
 IntWinRad = 0.2;        %[m], interferer window radius (3 sigma)              
@@ -50,8 +49,8 @@ flag_full_axis = false; %[-], True for full frequency axis [-Fs/2, Fs/2). False 
 t_frame = 0.016;        %[s], analysis window length
 t_pad = 0.016;          %[s], padding window length
 
-rebRatio = 0.0;         %Term describing direct to reverberant component (I set this number arbitrarily)
-numSigma2 = 10^-9;      %Term for dealing with numerical inaccuracies stemming from e.g. numerical integration. Effectively regularises the result by enforcing positive definiteness
+rebRatio = 0.0;         %Term describing direct to reverberant ratio (I set this number arbitrarily)
+numSigma2 = 10^-9;      %Term for dealing with numerical inaccuracies stemming from e.g. numerical integration. Effectively regularises the result by enforcing positive definiteness.
 nSigma2 = 0;            %Term which can be set in case of microphone self noise.
 
 % (3) Analysis and synthesis window
@@ -86,6 +85,7 @@ end
 
 rmpath clenquad/
 rmpath RIR-generator/
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Some extra functions for generating the received audio and plotting the microphones and loudspeakers %
